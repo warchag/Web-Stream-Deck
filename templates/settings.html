@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการปุ่ม - Web Deck</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="{{ theme_class }}">
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <main class="app-shell">
+    <header class="manager-bar">
+      <div>
+        <p class="eyebrow">ACTION MANAGER</p>
+        <h1>จัดการปุ่ม</h1>
+      </div>
+      <nav class="nav-pill">
+        <a href="/?token={{ token }}{% if current_page != 'All' %}&page={{ current_page }}{% endif %}">🏠 Deck</a>
+        <a href="/qr?token={{ token }}">QR</a>
+        <a href="/api/config/export?token={{ token }}">Export</a>
+        <button type="button" onclick="document.getElementById('importFile').click()">Import</button>
+        <button class="accent-action" onclick="showAddForm()">＋ เพิ่มปุ่ม</button>
+      </nav>
+      <input id="importFile" class="hidden" type="file" accept="application/json,.json" onchange="importConfig()">
+    </header>
+
+    <section class="page-tabs">
+      <a class="{% if current_page == 'All' %}active{% endif %}" href="/settings?token={{ token }}&page=All" style="--accent: {{ page_colors.get('All', current_color) }};">
+        <span>All</span>
+        <small>{{ pages|sum(attribute='count') }}</small>
+      </a>
+      {% for page in pages %}
+      <a class="{% if page.name == current_page %}active{% endif %}" href="/settings?token={{ token }}&page={{ page.name }}" style="--accent: {{ page.color }};">
+        <span>{{ page.name }}</span>
+        <small>{{ page.count }}</small>
+      </a>
+      {% endfor %}
+    </section>
+
+    <section class="theme-panel">
+      <div>
+        <p class="eyebrow">THEME PRESETS</p>
+        <h2>ธีมหน้าตา</h2>
+      </div>
+      <div class="theme-options">
+        {% for theme in themes %}
+        <button class="theme-choice {% if theme.id == current_theme %}active{% endif %}" type="button" onclick="saveTheme('{{ theme.id }}')" style="--theme-accent: {{ theme.accent }};">
+          <span class="theme-swatch"></span>
+          <strong>{{ theme.name }}</strong>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="color-panel">
+      <label>สีหมวด {{ current_page }}
+        <input id="pageColor" type="color" value="{{ current_color }}">
+      </label>
+      <button class="secondary" type="button" onclick="savePageColor()">บันทึกสีหมวด</button>
+    </section>
+
+    <section id="formPanel" class="glass-panel hidden">
+      <div class="panel-title">
+        <div>
+          <p class="eyebrow">ACTION EDITOR</p>
+          <h2 id="formTitle">เพิ่มปุ่มใหม่</h2>
+        </div>
+        <button class="ghost" onclick="resetForm()">ปิด</button>
+      </div>
+      <input type="hidden" id="editId">
+      <div class="form-grid">
+        <label>ชื่อปุ่ม
+          <input id="title" placeholder="เช่น Chrome / Photoshop / Run YOLO">
+        </label>
+        <label>ไอคอน Emoji
+          <div class="icon-field">
+            <div id="iconPreview" class="icon-preview">🔘</div>
+            <input id="icon" placeholder="Emoji หรือ /static/icons/icon.png" value="🔘" oninput="updateIconPreview()">
+          </div>
+        </label>
+        <label>กลุ่ม / หน้า Deck
+          <input id="page" list="pageOptions" placeholder="เช่น Streaming / Dev / Music / System" value="{% if current_page != 'All' %}{{ current_page }}{% else %}Main{% endif %}">
+          <datalist id="pageOptions">
+            {% for page in pages %}
+            <option value="{{ page.name }}"></option>
+            {% endfor %}
+          </datalist>
+        </label>
+        <label>สีปุ่ม
+          <input id="color" type="color" value="{{ current_color }}">
+        </label>
+        <label>ประเภท
+          <select id="type" onchange="updateHelp()">
+            <option value="open">เปิดแอป/ไฟล์/โฟลเดอร์</option>
+            <option value="url">เปิดเว็บไซต์</option>
+            <option value="command">รันคำสั่ง Terminal</option>
+            <option value="sound">เล่นเสียง</option>
+            <option value="macro">Macro / หลาย action</option>
+            <option value="volume_toggle">ปิด/เปิดเสียง</option>
+            <option value="volume_mute">ปิดเสียง</option>
+            <option value="volume_unmute">เปิดเสียง</option>
+            <option value="volume_up">เพิ่มเสียง</option>
+            <option value="volume_down">ลดเสียง</option>
+          </select>
+        </label>
+        <label id="stepLabel">Step เสียง
+          <input id="step" type="number" min="1" max="20" value="4">
+        </label>
+      </div>
+      <label id="targetLabel"><span id="targetTitle">Target</span>
+        <input id="target" placeholder='Mac: app:Google Chrome หรือ /Applications/Google Chrome.app'>
+      </label>
+      <label id="macroLabel" class="macro-editor hidden">Macro actions (JSON)
+        <textarea id="actions" spellcheck="false"></textarea>
+      </label>
+      <div class="icon-picker">
+        <div class="sound-header">
+          <strong>ไอคอนรูปภาพ</strong>
+          <span>อัปโหลด PNG/JPG/WebP/SVG เพื่อให้ปุ่มดูเป็นชุดเดียวกัน</span>
+        </div>
+        <div class="upload-line">
+          <input id="iconFile" type="file" accept="image/*">
+          <button type="button" class="secondary" onclick="uploadIcon()">อัปโหลดไอคอน</button>
+        </div>
+      </div>
+      <div id="soundPicker" class="sound-picker hidden">
+        <div class="sound-header">
+          <strong>ไฟล์เสียงในโฟลเดอร์ sounds/</strong>
+          <span>เลือกไฟล์ หรืออัปโหลดไฟล์ใหม่</span>
+        </div>
+        <div class="sound-list">
+          {% for sound in sounds %}
+          <button type="button" onclick="selectSound('{{ sound }}')">🎵 {{ sound }}</button>
+          {% else %}
+          <small>ยังไม่มีไฟล์เสียง ให้อัปโหลดไฟล์ก่อน หรือใส่ path เต็มใน Target</small>
+          {% endfor %}
+        </div>
+        <div class="upload-line">
+          <input id="soundFile" type="file" accept="audio/*">
+          <button type="button" class="secondary" onclick="uploadSound()">อัปโหลดเสียง</button>
+        </div>
+      </div>
+      <div id="help" class="help"></div>
+      <div class="form-actions">
+        <button class="primary" onclick="saveButton()">💾 บันทึก</button>
+        <button class="secondary" onclick="resetForm()">ยกเลิก</button>
+      </div>
+    </section>
+
+    <section class="settings-grid">
+      {% for b in buttons %}
+      <article class="action-row" draggable="true" data-id="{{ b.id }}" style="--accent: {{ b.color or page_colors.get(b.page, current_color) }};">
+        <div class="drag-handle" title="ลากเพื่อจัดลำดับ">☰</div>
+        <div class="action-icon">
+          {% if b.icon.startswith('/static/') or b.icon.startswith('http') %}
+          <img src="{{ b.icon }}" alt="">
+          {% else %}
+          {{ b.icon }}
+          {% endif %}
+        </div>
+        <div class="action-meta">
+          <strong>{{ loop.index }}. {{ b.title }}</strong>
+          <small>{{ b.page }} · {{ b.type }}{% if b.type == 'macro' %} · {{ b.actions|length }} actions{% elif b.target %} · {{ b.target }}{% endif %}</small>
+        </div>
+        <div class="row-actions">
+          <button onclick="moveButton('{{ b.id }}','top')">บนสุด</button>
+          <button onclick="moveButton('{{ b.id }}','up')">↑</button>
+          <button onclick="moveButton('{{ b.id }}','down')">↓</button>
+          <button onclick='editButton({{ b | tojson }})'>แก้ไข</button>
+          <button class="danger" onclick="deleteButton('{{ b.id }}')">ลบ</button>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-state compact">
+        <strong>ยังไม่มีปุ่มในกลุ่มนี้</strong>
+        <span>กดเพิ่มปุ่มเพื่อสร้างปุ่มแรกของกลุ่ม {{ current_page }}</span>
+      </div>
+      {% endfor %}
+    </section>
+
+    <div id="status" class="toast">พร้อมแก้ไข</div>
+  </main>
+
+<script>
+const token = "{{ token }}";
+const currentPage = "{{ current_page }}";
+const defaultFormPage = currentPage === 'All' ? 'Main' : currentPage;
+function authUrl(path) { return `${path}?token=${encodeURIComponent(token)}`; }
+function renderIconValue(value) {
+  const icon = (value || '🔘').trim() || '🔘';
+  if (icon.startsWith('/static/') || icon.startsWith('http')) return { image: icon };
+  return { text: icon };
+}
+function updateIconPreview() {
+  const preview = document.getElementById('iconPreview');
+  const rendered = renderIconValue(document.getElementById('icon').value);
+  preview.textContent = '';
+  if (rendered.image) {
+    const img = document.createElement('img');
+    img.src = rendered.image;
+    img.alt = '';
+    preview.appendChild(img);
+  } else {
+    preview.textContent = rendered.text;
+  }
+}
+function defaultMacroActions() {
+  return [
+    {type: 'open', target: 'app:VSCode'},
+    {type: 'delay', delay: 1},
+    {type: 'url', target: 'https://chatgpt.com'}
+  ];
+}
+function setMacroExample(force=false) {
+  const actions = document.getElementById('actions');
+  if (force || !actions.value.trim()) {
+    actions.value = JSON.stringify(defaultMacroActions(), null, 2);
+  }
+}
+function showAddForm() {
+  resetForm(false);
+  document.getElementById('formPanel').classList.remove('hidden');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function updateHelp() {
+  const type = document.getElementById('type').value;
+  const target = document.getElementById('target');
+  const help = document.getElementById('help');
+  const targetLabel = document.getElementById('targetLabel');
+  const targetTitle = document.getElementById('targetTitle');
+  const stepLabel = document.getElementById('stepLabel');
+  const step = document.getElementById('step');
+  const soundPicker = document.getElementById('soundPicker');
+  const macroLabel = document.getElementById('macroLabel');
+
+  const config = {
+    open: {
+      title: 'Target สำหรับเปิดแอป / ไฟล์ / โฟลเดอร์',
+      placeholder: 'Mac: app:Google Chrome หรือ /Applications/Google Chrome.app',
+      help: 'ใช้ <code>app:Chrome</code>, <code>app:Calculator</code>, <code>app:Terminal</code>, <code>app:VSCode</code> ได้ทั้ง macOS/Windows โดยระบบเลือกคำสั่งตาม OS อัตโนมัติ หรือใส่ path เต็ม เช่น <code>/Applications/Google Chrome.app</code>, <code>C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe</code>'
+    },
+    url: {
+      title: 'Target สำหรับเปิดเว็บไซต์',
+      placeholder: 'https://chatgpt.com',
+      help: 'ใส่ URL เว็บไซต์ เช่น <code>https://chatgpt.com</code> หรือ <code>https://google.com</code>'
+    },
+    command: {
+      title: 'Target สำหรับรันคำสั่ง Terminal',
+      placeholder: 'Mac: python3 /Users/bill/project/main.py | Windows: python C:\\project\\main.py',
+      help: 'ใส่คำสั่งที่ต้องการรัน เช่น <code>python3 /Users/bill/project/main.py</code>, <code>python C:\\project\\main.py</code>, <code>start chrome</code> หรือ <code>open -a &quot;Google Chrome&quot;</code>'
+    },
+    sound: {
+      title: 'Target สำหรับเล่นเสียง',
+      placeholder: 'alert.wav หรือ /Users/bill/Music/alert.mp3',
+      help: 'เลือกไฟล์จากรายการด้านล่าง หรือใส่ชื่อไฟล์ในโฟลเดอร์ <code>sounds/</code> เช่น <code>alert.wav</code>, <code>fire_alarm.mp3</code> หรือใส่ path เต็ม เช่น <code>/Users/bill/Music/alert.mp3</code>'
+    },
+    macro: {
+      help: 'ใส่ actions เป็น JSON array เช่น <code>{"type":"open","target":"app:VSCode"}</code>, <code>{"type":"delay","delay":1}</code>, <code>{"type":"url","target":"https://chatgpt.com"}</code> รองรับ open, url, command, sound และ volume'
+    }
+  };
+
+  const needTarget = ['open', 'url', 'command', 'sound'].includes(type);
+  target.style.display = needTarget ? 'block' : 'none';
+  targetLabel.style.display = needTarget ? 'block' : 'none';
+  macroLabel.classList.toggle('hidden', type !== 'macro');
+
+  if (needTarget) {
+    targetTitle.textContent = config[type].title;
+    target.placeholder = config[type].placeholder;
+    help.innerHTML = config[type].help;
+  } else if (type === 'macro') {
+    setMacroExample();
+    help.innerHTML = config.macro.help;
+  } else {
+    help.innerHTML = 'ปุ่มปรับระดับเสียงไม่ต้องใส่ Target';
+  }
+
+  const needStep = ['volume_up', 'volume_down'].includes(type);
+  step.style.display = needStep ? 'block' : 'none';
+  stepLabel.style.display = needStep ? 'block' : 'none';
+  soundPicker.classList.toggle('hidden', type !== 'sound');
+}
+
+function selectSound(name) {
+  document.getElementById('target').value = name;
+}
+async function uploadIcon() {
+  const input = document.getElementById('iconFile');
+  const status = document.getElementById('status');
+  if (!input.files.length) {
+    status.classList.add('show');
+    status.textContent = 'กรุณาเลือกไฟล์ไอคอนก่อน';
+    return;
+  }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  status.classList.add('show');
+  status.textContent = 'กำลังอัปโหลดไอคอน...';
+  try {
+    const res = await fetch(authUrl('/api/icons'), {method: 'POST', body: form});
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('icon').value = data.icon;
+      updateIconPreview();
+      status.textContent = '✅ อัปโหลดไอคอนแล้ว';
+    } else {
+      status.textContent = '⚠️ ' + data.error;
+    }
+  } catch (err) { status.textContent = 'อัปโหลดไอคอนไม่ได้: ' + err; }
+}
+async function uploadSound() {
+  const input = document.getElementById('soundFile');
+  const status = document.getElementById('status');
+  if (!input.files.length) {
+    status.classList.add('show');
+    status.textContent = 'กรุณาเลือกไฟล์เสียงก่อน';
+    return;
+  }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  status.classList.add('show');
+  status.textContent = 'กำลังอัปโหลดเสียง...';
+  try {
+    const res = await fetch(authUrl('/api/sounds'), {method: 'POST', body: form});
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('target').value = data.filename;
+      status.textContent = '✅ อัปโหลดเสียงแล้ว';
+      setTimeout(() => location.reload(), 500);
+    } else {
+      status.textContent = '⚠️ ' + data.error;
+    }
+  } catch (err) { status.textContent = 'อัปโหลดไม่ได้: ' + err; }
+}
+function editButton(b) {
+  document.getElementById('formPanel').classList.remove('hidden');
+  document.getElementById('formTitle').textContent = 'แก้ไขปุ่ม';
+  document.getElementById('editId').value = b.id || '';
+  document.getElementById('title').value = b.title || '';
+  document.getElementById('icon').value = b.icon || '🔘';
+  updateIconPreview();
+  document.getElementById('page').value = b.page || defaultFormPage;
+  document.getElementById('color').value = b.color || "{{ current_color }}";
+  document.getElementById('type').value = b.type || 'open';
+  document.getElementById('target').value = b.target || '';
+  document.getElementById('step').value = b.step || 4;
+  document.getElementById('actions').value = JSON.stringify(b.actions || defaultMacroActions(), null, 2);
+  updateHelp();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function resetForm(hide=true) {
+  document.getElementById('formTitle').textContent = 'เพิ่มปุ่มใหม่';
+  document.getElementById('editId').value = '';
+  document.getElementById('title').value = '';
+  document.getElementById('icon').value = '🔘';
+  updateIconPreview();
+  document.getElementById('page').value = defaultFormPage;
+  document.getElementById('color').value = "{{ current_color }}";
+  document.getElementById('type').value = 'open';
+  document.getElementById('target').value = '';
+  document.getElementById('step').value = 4;
+  document.getElementById('actions').value = JSON.stringify(defaultMacroActions(), null, 2);
+  if (hide) document.getElementById('formPanel').classList.add('hidden');
+  updateHelp();
+}
+async function saveButton() {
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  const id = document.getElementById('editId').value;
+  const type = document.getElementById('type').value;
+  const payload = {
+    title: document.getElementById('title').value,
+    icon: document.getElementById('icon').value,
+    page: document.getElementById('page').value,
+    color: document.getElementById('color').value,
+    type,
+    target: document.getElementById('target').value,
+    step: document.getElementById('step').value
+  };
+  if (type === 'macro') {
+    try {
+      payload.actions = JSON.parse(document.getElementById('actions').value || '[]');
+    } catch (err) {
+      status.textContent = '⚠️ Macro JSON ไม่ถูกต้อง: ' + err.message;
+      return;
+    }
+  }
+  const url = id ? authUrl(`/api/buttons/${id}`) : authUrl('/api/buttons');
+  const method = id ? 'PUT' : 'POST';
+  try {
+    const res = await fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    const data = await res.json();
+    if (data.ok) {
+      status.textContent = '✅ บันทึกปุ่มแล้ว';
+      const page = encodeURIComponent(data.button.page || defaultFormPage);
+      location.href = `/settings?token=${encodeURIComponent(token)}&page=${page}`;
+    }
+    else status.textContent = '⚠️ ผิดพลาด: ' + data.error;
+  } catch (err) { status.textContent = 'บันทึกไม่ได้: ' + err; }
+}
+async function savePageColor() {
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  status.textContent = 'กำลังบันทึกสีหมวด...';
+  try {
+    const res = await fetch(authUrl('/api/page-colors'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({page: currentPage, color: document.getElementById('pageColor').value})
+    });
+    const data = await res.json();
+    if (data.ok) { status.textContent = '✅ บันทึกสีหมวดแล้ว'; location.reload(); }
+    else status.textContent = '⚠️ ' + data.error;
+  } catch (err) { status.textContent = 'บันทึกสีไม่ได้: ' + err; }
+}
+async function saveTheme(theme) {
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  status.textContent = 'กำลังเปลี่ยนธีม...';
+  try {
+    const res = await fetch(authUrl('/api/theme'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({theme})
+    });
+    const data = await res.json();
+    if (data.ok) { status.textContent = '✅ เปลี่ยนธีมแล้ว'; location.reload(); }
+    else status.textContent = '⚠️ ' + data.error;
+  } catch (err) { status.textContent = 'เปลี่ยนธีมไม่ได้: ' + err; }
+}
+async function importConfig() {
+  const input = document.getElementById('importFile');
+  const status = document.getElementById('status');
+  if (!input.files.length) return;
+  if (!confirm('นำเข้าไฟล์นี้แทน buttons.json ปัจจุบันใช่ไหม?')) {
+    input.value = '';
+    return;
+  }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  status.classList.add('show');
+  status.textContent = 'กำลังนำเข้า config...';
+  try {
+    const res = await fetch(authUrl('/api/config/import'), {method: 'POST', body: form});
+    const data = await res.json();
+    if (data.ok) { status.textContent = `✅ นำเข้าแล้ว ${data.count} ปุ่ม`; location.href = `/settings?token=${encodeURIComponent(token)}&page=All`; }
+    else status.textContent = '⚠️ ' + data.error;
+  } catch (err) { status.textContent = 'นำเข้าไม่ได้: ' + err; }
+  input.value = '';
+}
+async function deleteButton(id) {
+  if (!confirm('ลบปุ่มนี้ใช่ไหม?')) return;
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  try {
+    const res = await fetch(authUrl(`/api/buttons/${id}`), {method: 'DELETE'});
+    const data = await res.json();
+    if (data.ok) { status.textContent = '✅ ลบปุ่มแล้ว'; location.reload(); }
+    else status.textContent = '⚠️ ผิดพลาด: ' + data.error;
+  } catch (err) { status.textContent = 'ลบไม่ได้: ' + err; }
+}
+async function moveButton(id, direction) {
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  status.textContent = 'กำลังจัดลำดับ...';
+  try {
+    const res = await fetch(authUrl(`/api/buttons/${id}/move`), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({direction, page: currentPage})
+    });
+    const data = await res.json();
+    if (data.ok) { status.textContent = '✅ จัดลำดับแล้ว'; location.reload(); }
+    else status.textContent = '⚠️ ผิดพลาด: ' + data.error;
+  } catch (err) { status.textContent = 'จัดลำดับไม่ได้: ' + err; }
+}
+
+let draggedRow = null;
+document.querySelectorAll('.action-row').forEach(row => {
+  row.addEventListener('dragstart', () => {
+    draggedRow = row;
+    row.classList.add('dragging');
+  });
+  row.addEventListener('dragend', async () => {
+    row.classList.remove('dragging');
+    draggedRow = null;
+    await saveDragOrder();
+  });
+  row.addEventListener('dragover', e => {
+    e.preventDefault();
+    const list = document.querySelector('.settings-grid');
+    const after = getDragAfterElement(list, e.clientY);
+    if (!draggedRow) return;
+    if (after == null) list.appendChild(draggedRow);
+    else list.insertBefore(draggedRow, after);
+  });
+});
+function getDragAfterElement(container, y) {
+  const rows = [...container.querySelectorAll('.action-row:not(.dragging)')];
+  return rows.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) return { offset, element: child };
+    return closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+async function saveDragOrder() {
+  const ids = [...document.querySelectorAll('.action-row')].map(row => row.dataset.id);
+  const status = document.getElementById('status');
+  status.classList.add('show');
+  status.textContent = 'กำลังบันทึกลำดับ...';
+  try {
+    const res = await fetch(authUrl('/api/buttons/reorder'), {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ids, page: currentPage})
+    });
+    const data = await res.json();
+    status.textContent = data.ok ? '✅ บันทึกลำดับแล้ว' : '⚠️ ผิดพลาด: ' + data.error;
+  } catch (err) { status.textContent = 'บันทึกลำดับไม่ได้: ' + err; }
+}
+
+updateHelp();
+updateIconPreview();
+</script>
+</body>
+</html>

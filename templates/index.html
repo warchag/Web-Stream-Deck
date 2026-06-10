@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Stream Deck</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="deck-body {{ theme_class }}">
+  <main class="deck-app">
+    <aside class="deck-sidebar">
+      <div class="brand-block">
+        <div class="brand-logo">▦</div>
+        <div>
+          <strong>WEB DECK</strong>
+          <small>Browser Control Pad</small>
+        </div>
+      </div>
+      <a class="side-link active" href="/?token={{ token }}&page={{ current_page }}">⌘ Deck</a>
+      <div class="page-list">
+        <span class="side-label">Pages</span>
+        {% for page in pages %}
+        <a class="page-link {% if page.name == current_page %}active{% endif %}" href="/?token={{ token }}&page={{ page.name }}" style="--accent: {{ page.color }};">
+          <span>{{ page.name }}</span>
+          <small>{{ page.count }}</small>
+        </a>
+        {% endfor %}
+      </div>
+      <div class="side-spacer"></div>
+      <div class="mini-stat"><span class="online-dot"></span> Online</div>
+      <div class="mini-stat">{{ buttons|length }} / {{ total_buttons }} Actions</div>
+    </aside>
+
+    <section class="deck-stage">
+      <header class="deck-topbar">
+        <div>
+          <p class="deck-kicker">CONTROL SURFACE</p>
+          <h1>{{ current_page }}</h1>
+        </div>
+        <details class="deck-actions">
+          <summary class="top-button">เมนู</summary>
+          <div class="deck-action-menu">
+            <a class="top-button" href="/qr?token={{ token }}">QR</a>
+            <button class="top-button" type="button" onclick="toggleFullscreen()">เต็มจอ</button>
+            <a class="top-button" href="/settings?token={{ token }}&page={{ current_page }}">จัดการปุ่ม</a>
+          </div>
+        </details>
+      </header>
+
+      <section class="stream-frame">
+        {% if buttons %}
+        <div class="stream-grid">
+          {% for b in buttons %}
+          <button class="stream-key" style="--accent: {{ b.color or page_colors.get(b.page, current_color) }};" onclick="runButton('{{ b.id }}', this)">
+            <span class="key-shine"></span>
+            <span class="key-icon">
+              {% if b.icon.startswith('/static/') or b.icon.startswith('http') %}
+              <img src="{{ b.icon }}" alt="">
+              {% else %}
+              {{ b.icon }}
+              {% endif %}
+            </span>
+            <span class="key-title">{{ b.title }}</span>
+            <span class="key-sub">{% if b.type == 'macro' %}macro {{ b.actions|length }}{% else %}{{ b.type }}{% endif %}</span>
+          </button>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <strong>ยังไม่มีปุ่มในหน้า {{ current_page }}</strong>
+          <span>เพิ่มปุ่มใหม่หรือย้ายปุ่มจากหน้าจัดการปุ่มได้เลย</span>
+          <a href="/settings?token={{ token }}&page={{ current_page }}">เพิ่มปุ่ม</a>
+        </div>
+        {% endif %}
+      </section>
+
+      <div id="status" class="deck-toast">พร้อมใช้งาน</div>
+    </section>
+  </main>
+
+<script>
+const token = "{{ token }}";
+function authUrl(path) { return `${path}?token=${encodeURIComponent(token)}`; }
+function syncActionMenuForViewport() {
+  const actions = document.querySelector('.deck-actions');
+  if (!actions) return;
+  actions.open = !window.matchMedia('(max-width: 860px)').matches;
+}
+function triggerHaptic(el) {
+  if (navigator.vibrate) {
+    navigator.vibrate(35);
+    return;
+  }
+  el.classList.remove('haptic-fallback');
+  void el.offsetWidth;
+  el.classList.add('haptic-fallback');
+  setTimeout(() => el.classList.remove('haptic-fallback'), 180);
+}
+let lastTouchTime = 0;
+document.querySelectorAll('.page-link, .stream-key, .top-button, .side-link').forEach(el => {
+  el.addEventListener('touchend', event => {
+    const now = Date.now();
+    if (now - lastTouchTime < 320) event.preventDefault();
+    lastTouchTime = now;
+  }, {passive: false});
+});
+syncActionMenuForViewport();
+window.addEventListener('resize', syncActionMenuForViewport);
+async function toggleFullscreen() {
+  const root = document.documentElement;
+  try {
+    if (!document.fullscreenElement && root.requestFullscreen) {
+      await root.requestFullscreen();
+      document.body.classList.add('kiosk-mode');
+    } else if (document.exitFullscreen) {
+      await document.exitFullscreen();
+      document.body.classList.remove('kiosk-mode');
+    }
+  } catch (err) {
+    document.getElementById('status').textContent = 'เปิดเต็มจอไม่ได้: ' + err;
+    document.getElementById('status').classList.add('show');
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  document.body.classList.toggle('kiosk-mode', !!document.fullscreenElement);
+});
+async function runButton(id, el) {
+  const status = document.getElementById('status');
+  triggerHaptic(el);
+  el.disabled = true;
+  status.textContent = 'กำลังสั่งงาน...';
+  status.classList.add('show');
+  try {
+    const res = await fetch(authUrl(`/api/run/${id}`), {method: 'POST'});
+    const data = await res.json();
+    status.textContent = data.ok ? `✅ สำเร็จ: ${data.button}` : `⚠️ ผิดพลาด: ${data.error}`;
+    if (data.ok) {
+      el.classList.add('pressed-ok');
+      setTimeout(() => el.classList.remove('pressed-ok'), 550);
+    }
+  } catch (err) {
+    status.textContent = 'เชื่อมต่อไม่ได้: ' + err;
+  } finally {
+    el.disabled = false;
+    setTimeout(() => status.classList.remove('show'), 2600);
+  }
+}
+</script>
+</body>
+</html>

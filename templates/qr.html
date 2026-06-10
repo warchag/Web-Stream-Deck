@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR Code - Web Deck</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="{{ theme_class }}">
+  <main class="app-shell qr-shell">
+    <header class="manager-bar">
+      <div>
+        <p class="eyebrow">MOBILE PAIRING</p>
+        <h1>QR Code</h1>
+      </div>
+      <nav class="nav-pill">
+        <a href="/?token={{ token }}">Deck</a>
+        <a href="/settings?token={{ token }}&page=All">จัดการปุ่ม</a>
+      </nav>
+    </header>
+
+    <section class="qr-card">
+      <div class="qr-copy">
+        <p class="eyebrow">SCAN FROM PHONE</p>
+        <h2>เปิด Deck บนมือถือ</h2>
+        <p>สแกน QR นี้จากมือถือหรือแท็บเล็ตที่อยู่ Wi-Fi เดียวกัน</p>
+        <div class="qr-links">
+          <label>LAN URL
+            <input readonly value="{{ links.lan }}">
+          </label>
+          <label>Local URL
+            <input readonly value="{{ links.local }}">
+          </label>
+        </div>
+      </div>
+      <div class="qr-image-wrap">
+        <img class="qr-image" src="/qr.png?token={{ token }}&mode=lan" alt="QR Code สำหรับเปิด Web Deck">
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,104 @@
+[
+  {
+    "title": "Monitor",
+    "icon": "/static/icons/azure-code.svg",
+    "page": "Streaming",
+    "type": "open",
+    "color": "#ff5c7a",
+    "target": "app:activity monitor",
+    "id": "activity_monitor"
+  },
+  {
+    "id": "chrome",
+    "title": "Chrome",
+    "icon": "/static/icons/chrome.svg",
+    "page": "Dev",
+    "type": "open",
+    "target": "app:Google Chrome"
+  },
+  {
+    "id": "google",
+    "title": "Google",
+    "icon": "/static/icons/google.svg",
+    "page": "Main",
+    "type": "url",
+    "target": "https://google.com"
+  },
+  {
+    "title": "Play",
+    "icon": "🔘",
+    "page": "Music",
+    "type": "sound",
+    "target": "alert.wav",
+    "id": "play"
+  },
+  {
+    "id": "mute_toggle",
+    "title": "ปิด/เปิดเสียง",
+    "icon": "🔇",
+    "page": "System",
+    "type": "volume_toggle"
+  },
+  {
+    "id": "sound_on",
+    "title": "เปิดเสียง",
+    "icon": "🔊",
+    "page": "System",
+    "type": "volume_unmute"
+  },
+  {
+    "id": "sound_off",
+    "title": "ปิดเสียง",
+    "icon": "🔈",
+    "page": "System",
+    "type": "volume_mute"
+  },
+  {
+    "id": "volume_up",
+    "title": "เพิ่มเสียง",
+    "icon": "➕",
+    "page": "System",
+    "type": "volume_up",
+    "step": 4
+  },
+  {
+    "id": "volume_down",
+    "title": "ลดเสียง",
+    "icon": "➖",
+    "page": "System",
+    "type": "volume_down",
+    "step": 4
+  },
+  {
+    "id": "calculator",
+    "title": "Calculator",
+    "icon": "🧮",
+    "page": "System",
+    "type": "open",
+    "target": "app:Calculator"
+  },
+  {
+    "id": "terminal",
+    "title": "Terminal",
+    "icon": "⌨️",
+    "page": "Dev",
+    "type": "open",
+    "target": "app:Terminal"
+  },
+  {
+    "id": "vscode",
+    "title": "VS Code",
+    "icon": "/static/icons/azure-code.svg",
+    "page": "Dev",
+    "type": "open",
+    "target": "app:Visual Studio Code"
+  },
+  {
+    "id": "finder",
+    "title": "Finder",
+    "icon": "📁",
+    "page": "System",
+    "type": "open",
+    "target": "app:Finder"
+  }
+]
