@@ -61,6 +61,17 @@ py -m pip install -r requirements.txt
 
 ## รันโปรแกรม
 
+เปิดแบบดับเบิลคลิก:
+
+```text
+macOS:   start_mac.command
+Windows: start_windows.bat
+```
+
+บน macOS ถ้าเปิดครั้งแรกแล้วระบบบล็อก ให้คลิกขวาที่ `start_mac.command` แล้วเลือก `Open`
+
+หรือรันผ่าน terminal:
+
 ```bash
 python3 app.py
 ```
