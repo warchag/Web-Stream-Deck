@@ -336,7 +336,7 @@ app:Notepad
 - `Minimal`
 - `iOS Glass`
 
-ระบบจะบันทึกธีมปัจจุบันไว้ใน `theme.json` และนำธีมเดียวกันไปใช้กับหน้า Deck, Settings และ QR อัตโนมัติ
+ระบบจะบันทึกธีมปัจจุบันไว้ และนำธีมเดียวกันไปใช้กับหน้า Deck, Settings และ QR อัตโนมัติ
 
 ## Import / Export Config
 
@@ -413,37 +413,6 @@ http://127.0.0.1:5001/qr?token=1234
 
 ```bash
 curl -X POST "http://127.0.0.1:5001/api/run/chrome?token=1234"
-```
-
-## ก่อนอัปขึ้น GitHub
-
-โปรเจกต์นี้เตรียมไฟล์สำหรับ repo แล้ว:
-
-- `.gitignore`: กัน cache, backup, `.env`, `.DS_Store` และไฟล์ local ที่ไม่ควร commit
-- `requirements.txt`: dependency สำหรับติดตั้งซ้ำบนเครื่องอื่น
-- `.env.example`: ตัวอย่าง environment variables
-- `.github/workflows/ci.yml`: GitHub Actions สำหรับ smoke test อัตโนมัติ
-
-คำสั่งเริ่ม repo:
-
-```bash
-git init
-git add .
-git status
-git commit -m "Initial web stream deck"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
-
-ก่อน push ควรเช็คว่าไม่มีไฟล์เหล่านี้อยู่ใน `git status`:
-
-```text
-.DS_Store
-__pycache__/
-backups/
-.env
-theme.json
 ```
 
 รายการ API หลัก:
